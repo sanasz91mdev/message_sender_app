@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:sms_maintained/sms.dart';
 import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
 
@@ -44,7 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Row(
                 children: <Widget>[
                   CircularProgressIndicator(),
-                  Text('Please Wait')
+                  Text('Please Wait ... ')
                 ],
               ),
             )
@@ -54,7 +55,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 children: <Widget>[
                   RaisedButton(
                     onPressed: _pickFile,
-                    child: Text('Open File'),
+                    child: Text(
+                      'Open File',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     color: Colors.purple,
                   )
                 ],
@@ -64,22 +68,69 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _pickFile() async {
+    try{
     File fileXlxs = await FilePicker.getFile();
     print(fileXlxs.path);
     var xcelRows = parseFile(fileXlxs.path);
-    List<Data> data = fillData(xcelRows);
+    List<Data> dataList = fillData(xcelRows);
     setState(() {
       isLoading = true;
     });
     //send sms
-    for (var item in data) {
-      SmsSender sender = new SmsSender();
-      String address = item.contactNumber;
-      sender.sendSms(new SmsMessage(address, item.message));
+    for (var item in dataList) {
+      if (!(item.amount.contains("-") || item.amount == "0")) {
+        SmsSender sender = new SmsSender();
+        String address = item.contactNumber;
+        sender.sendSms(new SmsMessage(address, item.message));
+      }
     }
     setState(() {
       isLoading = false;
     });
+
+ Alert(
+              context: context,
+              type: AlertType.success,
+              title: "Success!",
+              desc:
+                  'Messages sent',
+              buttons: [
+                DialogButton(
+                  color: Colors.green,
+                  child: Text("OK",
+                      style: Theme.of(context).textTheme.title.copyWith(
+                            color: Colors.white,
+                          )),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                )
+              ],
+            ).show();
+
+    }
+    catch(e)
+    {
+       Alert(
+              context: context,
+              type: AlertType.error,
+              title: "Oops!",
+              desc:
+                  'Something Bad Happened.',
+              buttons: [
+                DialogButton(
+                  color: Colors.green,
+                  child: Text("DISMISS",
+                      style: Theme.of(context).textTheme.title.copyWith(
+                            color: Colors.white,
+                          )),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                )
+              ],
+            ).show();
+    }
   }
 
   List<List<dynamic>> parseFile(String path) {
