@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:sms_maintained/sms.dart';
 import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
 
 void main() => runApp(MyApp());
@@ -30,24 +31,35 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool isLoading = false;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            RaisedButton(
-              onPressed: _pickFile,
-              child: Text('Open File'),
-              color: Colors.purple,
+      body: isLoading
+          ? Dialog(
+              child: Row(
+                children: <Widget>[
+                  CircularProgressIndicator(),
+                  Text('Please Wait')
+                ],
+              ),
             )
-          ],
-        ),
-      ),
+          : Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  RaisedButton(
+                    onPressed: _pickFile,
+                    child: Text('Open File'),
+                    color: Colors.purple,
+                  )
+                ],
+              ),
+            ),
     );
   }
 
@@ -55,7 +67,19 @@ class _MyHomePageState extends State<MyHomePage> {
     File fileXlxs = await FilePicker.getFile();
     print(fileXlxs.path);
     var xcelRows = parseFile(fileXlxs.path);
-    fillData(xcelRows);
+    List<Data> data = fillData(xcelRows);
+    setState(() {
+      isLoading = true;
+    });
+    //send sms
+    for (var item in data) {
+      SmsSender sender = new SmsSender();
+      String address = item.contactNumber;
+      sender.sendSms(new SmsMessage(address, item.message));
+    }
+    setState(() {
+      isLoading = false;
+    });
   }
 
   List<List<dynamic>> parseFile(String path) {
@@ -64,6 +88,7 @@ class _MyHomePageState extends State<MyHomePage> {
       var decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
       for (var table in decoder.tables.keys) {
         for (var row in decoder.tables[table].rows) {
+          //
           print("$row");
           // print(row.toString());
         }
@@ -79,10 +104,6 @@ class _MyHomePageState extends State<MyHomePage> {
     List<Data> dataRows = new List<Data>();
 
     for (var row in xcelRows) {
-      print(row[0]?.toString());
-      print('======');
-            print(row[1]?.toString());
-
       dataRows.add(Data(
           serialNo: (row[0]?.toString()),
           flatNo: row[1],
@@ -90,16 +111,21 @@ class _MyHomePageState extends State<MyHomePage> {
           noOfMonths: row[3]?.toString(),
           amount: row[4]?.toString(),
           contactNumber: row[5],
-          message: row[6]));
+          message: row[6]
+              ?.toString()
+              ?.replaceAll("<Flat No.>", row[1]?.toString())
+              ?.replaceAll("<Amount Outstanding>", row[4]?.toString())));
     }
 
     dataRows.removeAt(0);
+    print('Length');
+    print(dataRows.length.toString());
 
-    for(var item in dataRows)
-    {
+    for (var item in dataRows) {
       print(item.message);
     }
 
+    return dataRows;
   }
 }
 
