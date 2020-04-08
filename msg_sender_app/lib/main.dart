@@ -55,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
     File fileXlxs = await FilePicker.getFile();
     print(fileXlxs.path);
     var xcelRows = parseFile(fileXlxs.path);
-    //fillData(xcelRows);
+    fillData(xcelRows);
   }
 
   List<List<dynamic>> parseFile(String path) {
@@ -81,12 +81,14 @@ class _MyHomePageState extends State<MyHomePage> {
     for (var row in xcelRows) {
       print(row[0]?.toString());
       print('======');
+            print(row[1]?.toString());
+
       dataRows.add(Data(
-          serialNo: row[0]?.toString(),
+          serialNo: (row[0]?.toString()),
           flatNo: row[1],
           contactName: row[2],
           noOfMonths: row[3]?.toString(),
-          amount: row[4],
+          amount: row[4]?.toString(),
           contactNumber: row[5],
           message: row[6]));
     }
