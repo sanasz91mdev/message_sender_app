@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:sms_maintained/sms.dart';
 import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
+import 'package:flutter_progress_button/flutter_progress_button.dart';
 
 void main() => runApp(MyApp());
 
@@ -13,11 +14,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'SRWA',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home: MyHomePage(title: 'Sms Sender'),
+      home: MyHomePage(title: 'SRWA Messaging App'),
     );
   }
 }
@@ -33,6 +34,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   bool isLoading = false;
+  List<Data> _dataList = [];
+  String _filePath = "File: ";
 
   @override
   Widget build(BuildContext context) {
@@ -53,83 +56,151 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  RaisedButton(
-                    onPressed: _pickFile,
-                    child: Text(
-                      'Open File',
-                      style: TextStyle(color: Colors.white),
+                  Container(
+                      child: Text(_filePath,
+                          style: TextStyle(color: Colors.black))),
+                  ButtonTheme(
+                    minWidth: 196,
+                    height: 40,
+                    child: RaisedButton(
+                      onPressed: _pickFile,
+                      child: Text(
+                        'Open File',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      color: Colors.purple,
                     ),
-                    color: Colors.purple,
-                  )
+                  ),
+                  ProgressButton(
+                    defaultWidget: const Text('Send SMS',
+                        style: TextStyle(color: Colors.white)),
+                    progressWidget: const CircularProgressIndicator(),
+                    color: Colors.green,
+                    width: 196,
+                    height: 40,
+                    onPressed: _sendSMS,
+                  ),
+                  new Expanded(child: _buildContactList())
                 ],
               ),
             ),
     );
   }
 
-  void _pickFile() async {
-    try{
-    File fileXlxs = await FilePicker.getFile();
-    print(fileXlxs.path);
-    var xcelRows = parseFile(fileXlxs.path);
-    List<Data> dataList = fillData(xcelRows);
-    setState(() {
-      isLoading = true;
-    });
-    //send sms
-    for (var item in dataList) {
-      if (!(item.amount.contains("-") || item.amount == "0")) {
-        SmsSender sender = new SmsSender();
-        String address = item.contactNumber;
-        sender.sendSms(new SmsMessage(address, item.message));
+  Widget _buildContactList() {
+    if (_dataList != null) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(8),
+        itemCount: _dataList.length,
+        itemBuilder: (BuildContext ctxt, int index) {
+          return ListTile(
+              title: Text(
+                  _dataList[index].contactName +
+                      "\n(" +
+                      _dataList[index].contactNumber +
+                      ")",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                  )),
+              subtitle: Text(_dataList[index].message),
+              leading: Icon(
+                Icons.message,
+                color: Colors.blue[500],
+              ));
+        },
+        separatorBuilder: (context, index) {
+          return Divider();
+        },
+      );
+    }
+
+    return null;
+  }
+
+  void _sendSMS() async {
+    try {
+      //send sms
+      for (var item in _dataList) {
+        if (!(item.amount.contains("-") || item.amount == "0")) {
+          SmsSender sender = new SmsSender();
+          String address = item.contactNumber;
+          sender.sendSms(new SmsMessage(address, item.message));
+        }
       }
-    }
-    setState(() {
-      isLoading = false;
-    });
 
- Alert(
-              context: context,
-              type: AlertType.success,
-              title: "Success!",
-              desc:
-                  'Messages sent',
-              buttons: [
-                DialogButton(
-                  color: Colors.green,
-                  child: Text("OK",
-                      style: Theme.of(context).textTheme.title.copyWith(
-                            color: Colors.white,
-                          )),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                )
-              ],
-            ).show();
-
+      Alert(
+        context: context,
+        type: AlertType.success,
+        title: "Success!",
+        desc: 'Messages sent',
+        buttons: [
+          DialogButton(
+            color: Colors.green,
+            child: Text("OK",
+                style: Theme.of(context).textTheme.title.copyWith(
+                      color: Colors.white,
+                    )),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      ).show();
+    } catch (e) {
+      Alert(
+        context: context,
+        type: AlertType.error,
+        title: "Oops!",
+        desc: 'Something Bad Happened.',
+        buttons: [
+          DialogButton(
+            color: Colors.green,
+            child: Text("DISMISS",
+                style: Theme.of(context).textTheme.title.copyWith(
+                      color: Colors.white,
+                    )),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      ).show();
     }
-    catch(e)
-    {
-       Alert(
-              context: context,
-              type: AlertType.error,
-              title: "Oops!",
-              desc:
-                  'Something Bad Happened.',
-              buttons: [
-                DialogButton(
-                  color: Colors.green,
-                  child: Text("DISMISS",
-                      style: Theme.of(context).textTheme.title.copyWith(
-                            color: Colors.white,
-                          )),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                )
-              ],
-            ).show();
+  }
+
+  void _pickFile() async {
+    try {
+      File fileXlxs = await FilePicker.getFile();
+      print(fileXlxs.path);
+      var xcelRows = parseFile(fileXlxs.path);
+      _dataList = fillData(xcelRows);
+
+      setState(() {
+        _filePath = "File: " +
+            fileXlxs.path +
+            "\nTotal records: " +
+            _dataList.length.toString();
+      });
+    } catch (e) {
+      Alert(
+        context: context,
+        type: AlertType.error,
+        title: "Oops!",
+        desc: 'Something Bad Happened.',
+        buttons: [
+          DialogButton(
+            color: Colors.green,
+            child: Text("DISMISS",
+                style: Theme.of(context).textTheme.title.copyWith(
+                      color: Colors.white,
+                    )),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      ).show();
     }
   }
 
@@ -139,9 +210,8 @@ class _MyHomePageState extends State<MyHomePage> {
       var decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
       for (var table in decoder.tables.keys) {
         for (var row in decoder.tables[table].rows) {
-          //
+          
           print("$row");
-          // print(row.toString());
         }
         return decoder.tables[table].rows;
       }
@@ -175,6 +245,21 @@ class _MyHomePageState extends State<MyHomePage> {
     for (var item in dataRows) {
       print(item.message);
     }
+
+    // Dummy Data
+    // for (int i = 0; i < 500; i++) {
+    //   dataRows.add(Data(
+    //       serialNo: (i.toString()),
+    //       flatNo: "A" + i.toString(),
+    //       contactName: "Abdullah_" + i.toString(),
+    //       noOfMonths: '4',
+    //       amount: (i * 100).toString(),
+    //       contactNumber: "03001234" + i.toString().padLeft(3, '0'),
+    //       message:
+    //           "Dear Resident <Flat No.>, your total outstanding is Rs <Amount Outstanding>. Kindly pay online to Bank A Account Number XYZ. Thanks"
+    //               ?.replaceAll("<Flat No.>", "A" + i.toString())
+    //               ?.replaceAll("<Amount Outstanding>", (i * 100).toString())));
+    // }
 
     return dataRows;
   }
