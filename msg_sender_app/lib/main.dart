@@ -40,96 +40,90 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: isLoading
-          ? Dialog(
-              child: Row(
-                children: <Widget>[
-                  CircularProgressIndicator(),
-                  Text('Please Wait ... ')
-                ],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            RaisedButton(
+              onPressed: _pickFile,
+              child: Text(
+                'Open File',
+                style: TextStyle(color: Colors.white),
               ),
+              color: Colors.purple,
             )
-          : Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  RaisedButton(
-                    onPressed: _pickFile,
-                    child: Text(
-                      'Open File',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    color: Colors.purple,
-                  )
-                ],
-              ),
-            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _pickFile() async {
-    try{
-    File fileXlxs = await FilePicker.getFile();
-    print(fileXlxs.path);
-    var xcelRows = parseFile(fileXlxs.path);
-    List<Data> dataList = fillData(xcelRows);
-    setState(() {
-      isLoading = true;
-    });
-    //send sms
-    for (var item in dataList) {
-      if (!(item.amount.contains("-") || item.amount == "0")) {
-        SmsSender sender = new SmsSender();
-        String address = item.contactNumber;
-        sender.sendSms(new SmsMessage(address, item.message));
+    try {
+      File fileXlxs = await FilePicker.getFile();
+      print(fileXlxs.path);
+      var xcelRows = parseFile(fileXlxs.path);
+      List<Data> dataList = fillData(xcelRows);
+print("progress");
+      showDialog(
+        barrierDismissible: false,
+        context: context,
+        builder: (context) => AlertDialog(
+          content: ListTile(
+            leading: CircularProgressIndicator(),
+            title: Text('Please wait ...'),
+          ),
+        ),
+      );
+
+      //send sms
+      for (var item in dataList) {
+        if (!(item.amount.contains("-") || item.amount == "0")) {
+          SmsSender sender = new SmsSender();
+          String address = item.contactNumber;
+          await sender.sendSms(new SmsMessage(address, item.message));
+        }
       }
-    }
-    setState(() {
-      isLoading = false;
-    });
 
- Alert(
-              context: context,
-              type: AlertType.success,
-              title: "Success!",
-              desc:
-                  'Messages sent',
-              buttons: [
-                DialogButton(
-                  color: Colors.green,
-                  child: Text("OK",
-                      style: Theme.of(context).textTheme.title.copyWith(
-                            color: Colors.white,
-                          )),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                )
-              ],
-            ).show();
+      Navigator.of(context).pop();
 
-    }
-    catch(e)
-    {
-       Alert(
-              context: context,
-              type: AlertType.error,
-              title: "Oops!",
-              desc:
-                  'Something Bad Happened.',
-              buttons: [
-                DialogButton(
-                  color: Colors.green,
-                  child: Text("DISMISS",
-                      style: Theme.of(context).textTheme.title.copyWith(
-                            color: Colors.white,
-                          )),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                )
-              ],
-            ).show();
+      Alert(
+        context: context,
+        type: AlertType.success,
+        title: "Success!",
+        desc: 'Messages sent',
+        buttons: [
+          DialogButton(
+            color: Colors.green,
+            child: Text("OK",
+                style: Theme.of(context).textTheme.title.copyWith(
+                      color: Colors.white,
+                    )),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      ).show();
+    } catch (e) {
+      Alert(
+        context: context,
+        type: AlertType.error,
+        title: "Oops!",
+        desc: 'Something Bad Happened.',
+        buttons: [
+          DialogButton(
+            color: Colors.green,
+            child: Text("DISMISS",
+                style: Theme.of(context).textTheme.title.copyWith(
+                      color: Colors.white,
+                    )),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          )
+        ],
+      ).show();
     }
   }
 
@@ -138,11 +132,6 @@ class _MyHomePageState extends State<MyHomePage> {
       var bytes = File(path).readAsBytesSync();
       var decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
       for (var table in decoder.tables.keys) {
-        for (var row in decoder.tables[table].rows) {
-          //
-          print("$row");
-          // print(row.toString());
-        }
         return decoder.tables[table].rows;
       }
       return null;
