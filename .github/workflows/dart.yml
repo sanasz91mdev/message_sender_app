@@ -26,6 +26,7 @@ jobs:
     
     # Get flutter dependencies.
     - run: flutter pub get
+      working-directory: ../../msg_sender_app
     
     # Build apk.
     - run: flutter build apk
