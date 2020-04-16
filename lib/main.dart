@@ -260,9 +260,6 @@ class _MyHomePageState extends State<MyHomePage> {
       var bytes = File(path).readAsBytesSync();
       var decoder = SpreadsheetDecoder.decodeBytes(bytes, update: true);
       for (var table in decoder.tables.keys) {
-        for (var row in decoder.tables[table].rows) {
-          print("$row");
-        }
         return decoder.tables[table].rows;
       }
       return null;
