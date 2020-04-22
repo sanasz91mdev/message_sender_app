@@ -1,5 +1,5 @@
-name: msg_sender_app
-description: A new Flutter project.
+name: SRWA
+description: SRWA messaging app
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -23,10 +23,18 @@ dependencies:
   sms_maintained: ^0.2.5
   rflutter_alert: ^1.0.3
   file_picker: ^1.6.2
+  flutter_launcher_icons: ^0.7.4
+  flutter_progress_button: ^1.0.0
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^0.1.2
+
+flutter_icons:
+  ios: true
+  android: true
+  image_path_ios: "assets/launcher/icon.png"
+  image_path_android: "assets/launcher/icon.png"
 
 dev_dependencies:
   flutter_test:
@@ -74,3 +82,5 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+  
