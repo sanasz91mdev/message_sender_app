@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:rflutter_alert/rflutter_alert.dart';
 import 'package:sms_maintained/sms.dart';
 import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
@@ -9,7 +10,6 @@ import 'package:flutter_progress_button/flutter_progress_button.dart';
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -35,7 +35,13 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Data> _dataList = [];
   String _filePath = "";
   String _numberOfRecords = "0";
+  int _totalRecordCount = 0;
+  int sentCount = 0;
+  int finalSentCountDisplay = 0;
   bool isFileSelected = false;
+  bool isSmsSentStarted = false;
+  double sendProgressValue = 0.0;
+  double intervalCounter = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -155,10 +161,31 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 )
               : Container(),
-          new Expanded(child: _buildContactList()),
+          Expanded(child: _buildContactList()),
+          isSmsSentStarted
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: <Widget>[
+                    LinearPercentIndicator(
+                      animateFromLastPercent: true,
+                      width: 150.0,
+                      lineHeight: 20.0,
+                      percent: sendProgressValue,
+                      progressColor: Colors.orange,
+                      center: Text((sendProgressValue * 100).toString() + " %"),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4.0),
+                      child:
+                          Text("{$finalSentCountDisplay/$_totalRecordCount}"),
+                    ),
+                  ],
+                )
+              : Container(),
           isFileSelected
               ? Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
+                  padding: const EdgeInsets.only(bottom: 16.0, top: 16.0),
                   child: ProgressButton(
                     borderRadius: 10.0,
                     type: ProgressButtonType.Raised,
@@ -192,7 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
           itemCount: _dataList.length,
           itemBuilder: (BuildContext ctxt, int index) {
             return ListTile(
-              isThreeLine: true,
+                isThreeLine: true,
                 title: Text(
                     _dataList[index].contactName +
                         "\n(" +
@@ -230,6 +257,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       setState(() {
         _filePath = fileXlxs.path.split('/').last;
+        _totalRecordCount = _dataList.length;
         _numberOfRecords = _dataList.length?.toString();
         isFileSelected = true;
       });
@@ -297,11 +325,35 @@ class _MyHomePageState extends State<MyHomePage> {
   void _sendSMS() async {
     try {
       //send sms
+      setState(() {
+        isSmsSentStarted = true;
+      });
       for (var item in _dataList) {
         if (!(item.amount.contains("-") || item.amount == "0")) {
           SmsSender sender = new SmsSender();
           String address = item.contactNumber;
           sender.sendSms(new SmsMessage(address, item.message));
+          setState(() {
+            sentCount++;
+            intervalCounter++;
+            finalSentCountDisplay = sentCount;
+            sendProgressValue = sentCount / _totalRecordCount;
+          });
+          if (intervalCounter == 1) {
+            showDialog(
+              barrierDismissible: false,
+              context: context,
+              builder: (context) => AlertDialog(
+                content: ListTile(
+                  leading: CircularProgressIndicator(),
+                  title: Text('Please wait ...'),
+                ),
+              ),
+            );
+            await Future.delayed(Duration(seconds: 3));
+            intervalCounter=0;
+            Navigator.of(context).pop();
+          }
         }
       }
 
@@ -319,6 +371,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     )),
             onPressed: () {
               Navigator.of(context).pop();
+              setState(() {
+                sentCount = 0;
+              });
             },
           )
         ],
@@ -337,6 +392,9 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: Colors.white,
                     )),
             onPressed: () {
+              setState(() {
+                sentCount = 0;
+              });
               Navigator.of(context).pop();
             },
           )
@@ -349,6 +407,10 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       isFileSelected = false;
       _dataList = null;
+      isSmsSentStarted = false;
+      sentCount = 0;
+      sendProgressValue = 0.0;
+      finalSentCountDisplay = 0;
     });
   }
 }
